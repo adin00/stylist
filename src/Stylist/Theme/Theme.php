@@ -36,7 +36,9 @@ class Theme implements Arrayable
      * @var string
      */
     private $path;
-
+    
+    private $manifest;
+    
     /**
      * Theme just needs to know one thing - where the theme is found. It'll do the rest.
      *
@@ -111,4 +113,42 @@ class Theme implements Arrayable
     {
         return get_object_vars($this);
     }
+    
+    /**
+     * @param $url string
+     * @return string
+     */
+    public function addCacheBreaker($url) {
+        if(preg_match('/(^[^\?]*)(?:[\?]|$)((?<=\?|&)cache\-break=manifest(?=&|$))/', $url, $parts)){
+            // @todo: add file timestamp as cache breaker method
+            if($digest = $this->getManifestDigest($parts[1])) {
+                $url = str_replace($parts[2], $digest, $url);
+            }
+        }
+        
+        return $url;
+    }
+    
+    /**
+     * @param $asset
+     * @return mixed
+     */
+    private function getManifestDigest($asset) {
+        if(!$this->manifest) {
+            //load manifest on first use
+	        $manifestFile = public_path("themes/{$this->getAssetPath()}/" .
+		        config('stylist.themes.manifest', 'manifest.json'));
+	        if(file_exists($manifestFile)) {
+	            $this->manifest = json_decode(file_get_contents($manifestFile));
+	        }
+	        
+	        //if there is any error make it empty object
+	        if(!$this->manifest) {
+		        $this->manifest = (object) array();
+	        }
+        }
+        
+        return isset($this->manifest->{$asset}) ? $this->manifest->{$asset} : false;
+    }
+    
 }

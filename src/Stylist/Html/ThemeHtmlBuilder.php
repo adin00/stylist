@@ -16,7 +16,9 @@ class ThemeHtmlBuilder
      * @var UrlGenerator
      */
     private $url;
-
+    
+    private $theme;
+    
     /**
      * @param HtmlBuilder $html
      * @param UrlGenerator $url
@@ -25,6 +27,7 @@ class ThemeHtmlBuilder
     {
         $this->html = $html;
         $this->url = $url;
+        $this->theme = StylistFacade::current();
     }
 
     /**
@@ -37,7 +40,7 @@ class ThemeHtmlBuilder
      */
     public function script($url, $attributes = array(), $secure = null)
     {
-        return $this->html->script($this->assetUrl($url), $attributes, $secure);
+        return $this->html->script($this->assetUrl($url, true), $attributes, $secure);
     }
 
     /**
@@ -59,12 +62,12 @@ class ThemeHtmlBuilder
         if ($theme->hasParent()) {
             $parent = StylistFacade::get($theme->getParent());
             StylistFacade::activate($parent);
-            $styles[] = $this->style($url, $attributes, $secure);
+            $styles[] = $this->style($parent->addCacheBreaker($url), $attributes, $secure);
             StylistFacade::activate($theme);
         }
-
-        $styles[] = $this->html->style($this->assetUrl($url), $attributes, $secure);
-
+        
+        $styles[] = $this->html->style($this->assetUrl($url, true), $attributes, $secure);
+        
         return implode("\n", $styles);
     }
 
@@ -114,18 +117,19 @@ class ThemeHtmlBuilder
      * @param string $url
      * @return string
      */
-    protected function assetUrl($url)
+    protected function assetUrl($url, $checkForCacheBreak = false)
     {
         if ($this->url->isValidUrl($url)) {
             return $url;
         }
 
-        $theme = StylistFacade::current();
-
-        if ($theme) {
-            $themePath = $theme->getAssetPath();
-
-            $url = "themes/$themePath/$url";
+//        $theme = StylistFacade::current();
+        if ($this->theme) {
+            $url = implode('/', [
+                'themes',
+                $this->theme->getAssetPath(),
+                $checkForCacheBreak ? $this->theme->addCacheBreaker($url) : $url
+            ]);
         }
 
         return $url;

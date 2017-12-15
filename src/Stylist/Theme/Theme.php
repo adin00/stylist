@@ -119,11 +119,25 @@ class Theme implements Arrayable
      * @return string
      */
     public function addCacheBreaker($url) {
-        if(preg_match('/(^[^\?]*)(?:[\?]|$)((?<=\?|&)cache\-break=manifest(?=&|$))/', $url, $parts)){
+    	if(config('stylist.cache-break.activate') == 'off') return $url;
+    	
+        if(preg_match('/(^[^\?]*).*((?<=\?|&)cache\-break(?:=(manifest|timestamp))?(?=&|$))/', $url, $parts, PREG_OFFSET_CAPTURE)){
+	        /**
+	         * $parts[1]    asset url
+	         * $parts[2]    full cache-break param
+	         * $parts[3]    cache-break method (optional)
+	         */
             // @todo: add file timestamp as cache breaker method
-            if($digest = $this->getManifestDigest($parts[1])) {
-                $url = str_replace($parts[2], $digest, $url);
+	        $method = isset($parts[3]) ? $parts[3][0] : config('stylist.cache-break.method', 'manifest');
+            if($digest = $this->{"get".ucfirst($method)."Digest"}($parts[1][0])) {
+                $url = substr_replace($url, $digest, $parts[2][1], strlen($parts[2][0]));
             }
+        } elseif(in_array(config('stylist.cache-break.activate'), ['auto', 'all'])) {
+	        if(preg_match('/(^[^\?]*)/', $url, $parts)){
+		        if($digest = $this->{"get".ucfirst(config('stylist.cache-break.method'))."Digest"}($parts[1])) {
+		        	$url .= ($parts[0] == $url ? "?":"&") . $digest;
+		        }
+	        }
         }
         
         return $url;
@@ -137,7 +151,7 @@ class Theme implements Arrayable
         if(!$this->manifest) {
             //load manifest on first use
 	        $manifestFile = public_path("themes/{$this->getAssetPath()}/" .
-		        config('stylist.themes.manifest', 'manifest.json'));
+		        config('stylist.cache-break.manifest', 'manifest.json'));
 	        if(file_exists($manifestFile)) {
 	            $this->manifest = json_decode(file_get_contents($manifestFile));
 	        }
@@ -149,6 +163,13 @@ class Theme implements Arrayable
         }
         
         return isset($this->manifest->{$asset}) ? $this->manifest->{$asset} : false;
+    }
+    
+    private function getTimestampDigest($asset) {
+    	//this is just a placeholder for now
+	    return sha1( (string) time() );
+	    
+    	return false;
     }
     
 }

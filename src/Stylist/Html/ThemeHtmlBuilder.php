@@ -40,7 +40,7 @@ class ThemeHtmlBuilder
      */
     public function script($url, $attributes = array(), $secure = null)
     {
-        return $this->html->script($this->assetUrl($url, true), $attributes, $secure);
+        return $this->html->script($this->assetUrl($url), $attributes, $secure);
     }
 
     /**
@@ -66,7 +66,7 @@ class ThemeHtmlBuilder
             StylistFacade::activate($theme);
         }
         
-        $styles[] = $this->html->style($this->assetUrl($url, true), $attributes, $secure);
+        $styles[] = $this->html->style($this->assetUrl($url), $attributes, $secure);
         
         return implode("\n", $styles);
     }
@@ -117,7 +117,7 @@ class ThemeHtmlBuilder
      * @param string $url
      * @return string
      */
-    protected function assetUrl($url, $checkForCacheBreak = false)
+    protected function assetUrl($url)
     {
         if ($this->url->isValidUrl($url)) {
             return $url;
@@ -128,7 +128,7 @@ class ThemeHtmlBuilder
             $url = implode('/', [
                 'themes',
                 $this->theme->getAssetPath(),
-                $checkForCacheBreak ? $this->theme->addCacheBreaker($url) : $url
+                $this->theme->addCacheBreaker($url)
             ]);
         }
 
